@@ -1,0 +1,14 @@
+name: cloud-pc
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Enable RDP
+        run: |
+          net user runneradmin Pass123! /add
+          net localgroup administrators runneradmin /add
+          powershell -Command "Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name fDenyTSConnections -Value 0"
