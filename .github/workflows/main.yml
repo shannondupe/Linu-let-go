@@ -1,31 +1,37 @@
-name: Toontown Mobile RDP
+name: Toontown RDP Fix (Phone Optimized)
 on: workflow_dispatch
 
 jobs:
   build:
     runs-on: windows-latest
     steps:
-    - name: 1. Setup OpenGL (Mesa3D)
+    - name: 1. Setup Mesa3D (Software GPU)
       run: |
-        # Download and extract the software renderer (CPU-based GPU)
+        # Download Mesa3D for OpenGL 3.3+ support on CPU
         curl.exe -L --output mesa.7z --url https://github.com
         & "C:\Program Files\7-Zip\7z.exe" x mesa.7z -o"C:\mesa3d"
-        # Force Windows to see these drivers
+        # Set system environment variables
+        [System.Environment]::SetEnvironmentVariable("GALLIUM_DRIVER", "llvmpipe", "Machine")
         echo "C:\mesa3d\x64" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-    - name: 2. Enable Remote Desktop
+    - name: 2. Force Enable RDP & User
       run: |
+        # Enable RDP and disable Network Level Authentication (easier for mobile apps)
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        # Create a simple user for your phone to log in
+        # Create user
         net user runneradmin "Toontown123!" /add
         net localgroup administrators runneradmin /add
 
-    - name: 3. Start Connection (Pinggy)
+    - name: 3. Start Stable Tunnel
       shell: cmd
       run: |
         echo "=========================================================="
-        echo "LOOK BELOW FOR THE ADDRESS (a.pinggy.io:XXXXX)"
+        echo "CONNECT TO THE URL BELOW IN YOUR MICROSOFT RD APP"
         echo "=========================================================="
-        # This starts the tunnel. Keep this tab open on your phone!
-        ssh -p 443 -o StrictHostKeyChecking=no -R0:localhost:3389 a.pinggy.io
+        # Loop to prevent the tunnel from closing if it flickers
+        :loop
+        ssh -p 443 -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -R0:localhost:3389 a.pinggy.io
+        timeout /t 5
+        goto loop
