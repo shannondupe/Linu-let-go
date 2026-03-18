@@ -1,37 +1,59 @@
 name: Toontown RDP Fix (Phone Optimized)
-on: workflow_dispatch
+
+on:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
-    steps:
-    - name: 1. Setup Mesa3D (Software GPU)
-      run: |
-        # Download Mesa3D for OpenGL 3.3+ support on CPU
-        curl.exe -L --output mesa.7z --url https://github.com
-        & "C:\Program Files\7-Zip\7z.exe" x mesa.7z -o"C:\mesa3d"
-        # Set system environment variables
-        [System.Environment]::SetEnvironmentVariable("GALLIUM_DRIVER", "llvmpipe", "Machine")
-        echo "C:\mesa3d\x64" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-    - name: 2. Force Enable RDP & User
+    steps:
+
+    - name: 1. Setup Mesa3D (Software GPU)
+      shell: powershell
       run: |
-        # Enable RDP and disable Network Level Authentication (easier for mobile apps)
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 0
+        Write-Host "Downloading Mesa3D..."
+        
+        # Download real mesa build (not github homepage)
+        curl.exe -L -o mesa.zip https://github.com/pal1000/mesa-dist-win/releases/latest/download/mesa3d-23.1.9-release-msvc.7z
+        
+        # Install 7zip (runner does not always have it)
+        choco install 7zip -y
+        
+        # Extract
+        & "C:\Program Files\7-Zip\7z.exe" x mesa.zip -oC:\mesa3d
+        
+        # Set OpenGL software renderer
+        [System.Environment]::SetEnvironmentVariable("GALLIUM_DRIVER","llvmpipe","Machine")
+        echo "C:\mesa3d\x64" >> $env:GITHUB_PATH
+
+    - name: 2. Enable RDP + Create User
+      shell: powershell
+      run: |
+
+        Write-Host "Enabling RDP..."
+
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' `
+          -Name "fDenyTSConnections" -Value 0
+
+        Set-ItemProperty `
+          -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' `
+          -Name "UserAuthentication" -Value 0
+
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        # Create user
-        net user runneradmin "Toontown123!" /add
+
+        net user runneradmin Toontown123! /add
         net localgroup administrators runneradmin /add
 
-    - name: 3. Start Stable Tunnel
+    - name: 3. Start Tunnel (Stable)
       shell: cmd
       run: |
-        echo "=========================================================="
-        echo "CONNECT TO THE URL BELOW IN YOUR MICROSOFT RD APP"
-        echo "=========================================================="
-        # Loop to prevent the tunnel from closing if it flickers
+
+        echo ==============================
+        echo CONNECT USING MICROSOFT RD
+        echo ==============================
+
         :loop
-        ssh -p 443 -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -R0:localhost:3389 a.pinggy.io
+        ssh -o StrictHostKeyChecking=no -p 443 -R0:localhost:3389 tcp@a.pinggy.io
         timeout /t 5
         goto loop
