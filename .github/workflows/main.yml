@@ -1,14 +1,31 @@
-name: cloud-pc
-
+name: Toontown Mobile RDP
 on: workflow_dispatch
 
 jobs:
   build:
     runs-on: windows-latest
-
     steps:
-      - name: Enable RDP
-        run: |
-          net user runneradmin Pass123! /add
-          net localgroup administrators runneradmin /add
-          powershell -Command "Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name fDenyTSConnections -Value 0"
+    - name: 1. Setup OpenGL (Mesa3D)
+      run: |
+        # Download and extract the software renderer (CPU-based GPU)
+        curl.exe -L --output mesa.7z --url https://github.com
+        & "C:\Program Files\7-Zip\7z.exe" x mesa.7z -o"C:\mesa3d"
+        # Force Windows to see these drivers
+        echo "C:\mesa3d\x64" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    - name: 2. Enable Remote Desktop
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        # Create a simple user for your phone to log in
+        net user runneradmin "Toontown123!" /add
+        net localgroup administrators runneradmin /add
+
+    - name: 3. Start Connection (Pinggy)
+      shell: cmd
+      run: |
+        echo "=========================================================="
+        echo "LOOK BELOW FOR THE ADDRESS (a.pinggy.io:XXXXX)"
+        echo "=========================================================="
+        # This starts the tunnel. Keep this tab open on your phone!
+        ssh -p 443 -o StrictHostKeyChecking=no -R0:localhost:3389 a.pinggy.io
