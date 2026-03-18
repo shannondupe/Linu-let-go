@@ -9,24 +9,22 @@ jobs:
 
     steps:
 
-    - name: 1. Download Mesa3D (Safe)
+    - name: 1. Download Mesa3D
       shell: powershell
       run: |
 
-        Write-Host "Downloading Mesa..."
-
         curl.exe -L -o mesa.7z https://github.com/pal1000/mesa-dist-win/releases/download/23.1.9/mesa3d-23.1.9-release-msvc.7z
 
-        mkdir C:\mesa
+        mkdir C:\mesa -ErrorAction SilentlyContinue
 
-        & "C:\Program Files\7-Zip\7z.exe" x mesa.7z -oC:\mesa
+        & "C:\Program Files\7-Zip\7z.exe" x mesa.7z -oC:\mesa -y
 
         [System.Environment]::SetEnvironmentVariable("GALLIUM_DRIVER","llvmpipe","Machine")
 
         echo C:\mesa\x64 >> $env:GITHUB_PATH
 
 
-    - name: 2. Enable RDP
+    - name: 2. Enable RDP (Safe)
       shell: powershell
       run: |
 
@@ -39,16 +37,21 @@ jobs:
 
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-        net user runneradmin Pass123! /add
-        net localgroup administrators runneradmin /add
+        # Create user only if not exists
+        $user = Get-LocalUser -Name "runneradmin" -ErrorAction SilentlyContinue
+
+        if (!$user) {
+          net user runneradmin Pass123! /add
+          net localgroup administrators runneradmin /add
+        }
 
 
-    - name: 3. Tunnel (More stable)
+    - name: 3. Start Tunnel
       shell: cmd
       run: |
 
         echo =====================
-        echo COPY THIS ADDRESS
+        echo CONNECT WITH RD APP
         echo =====================
 
         :loop
