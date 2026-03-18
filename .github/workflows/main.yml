@@ -9,51 +9,49 @@ jobs:
 
     steps:
 
-    - name: 1. Setup Mesa3D (Software GPU)
+    - name: 1. Download Mesa3D (Safe)
       shell: powershell
       run: |
-        Write-Host "Downloading Mesa3D..."
-        
-        # Download real mesa build (not github homepage)
-        curl.exe -L -o mesa.zip https://github.com/pal1000/mesa-dist-win/releases/latest/download/mesa3d-23.1.9-release-msvc.7z
-        
-        # Install 7zip (runner does not always have it)
-        choco install 7zip -y
-        
-        # Extract
-        & "C:\Program Files\7-Zip\7z.exe" x mesa.zip -oC:\mesa3d
-        
-        # Set OpenGL software renderer
+
+        Write-Host "Downloading Mesa..."
+
+        curl.exe -L -o mesa.7z https://github.com/pal1000/mesa-dist-win/releases/download/23.1.9/mesa3d-23.1.9-release-msvc.7z
+
+        mkdir C:\mesa
+
+        & "C:\Program Files\7-Zip\7z.exe" x mesa.7z -oC:\mesa
+
         [System.Environment]::SetEnvironmentVariable("GALLIUM_DRIVER","llvmpipe","Machine")
-        echo "C:\mesa3d\x64" >> $env:GITHUB_PATH
 
-    - name: 2. Enable RDP + Create User
+        echo C:\mesa\x64 >> $env:GITHUB_PATH
+
+
+    - name: 2. Enable RDP
       shell: powershell
       run: |
-
-        Write-Host "Enabling RDP..."
 
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' `
           -Name "fDenyTSConnections" -Value 0
 
-        Set-ItemProperty `
-          -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' `
-          -Name "UserAuthentication" -Value 0
+        Set-ItemProperty -Path `
+        'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' `
+        -Name "UserAuthentication" -Value 0
 
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-        net user runneradmin Toontown123! /add
+        net user runneradmin Pass123! /add
         net localgroup administrators runneradmin /add
 
-    - name: 3. Start Tunnel (Stable)
+
+    - name: 3. Tunnel (More stable)
       shell: cmd
       run: |
 
-        echo ==============================
-        echo CONNECT USING MICROSOFT RD
-        echo ==============================
+        echo =====================
+        echo COPY THIS ADDRESS
+        echo =====================
 
         :loop
-        ssh -o StrictHostKeyChecking=no -p 443 -R0:localhost:3389 tcp@a.pinggy.io
+        ssh -o StrictHostKeyChecking=no -R 0:localhost:3389 tcp@a.pinggy.io
         timeout /t 5
         goto loop
