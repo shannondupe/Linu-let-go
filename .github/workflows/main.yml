@@ -13,6 +13,8 @@ jobs:
       shell: powershell
       run: |
 
+        Write-Host "Downloading Mesa"
+
         curl.exe -L -o mesa.7z https://github.com/pal1000/mesa-dist-win/releases/download/23.1.9/mesa3d-23.1.9-release-msvc.7z
 
         mkdir C:\mesa -ErrorAction SilentlyContinue
@@ -24,9 +26,12 @@ jobs:
         echo C:\mesa\x64 >> $env:GITHUB_PATH
 
 
-    - name: 2. Enable RDP (Safe)
+
+    - name: 2. Enable RDP Safe
       shell: powershell
       run: |
+
+        Write-Host "Enable RDP"
 
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' `
           -Name "fDenyTSConnections" -Value 0
@@ -37,7 +42,6 @@ jobs:
 
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-        # Create user only if not exists
         $user = Get-LocalUser -Name "runneradmin" -ErrorAction SilentlyContinue
 
         if (!$user) {
@@ -46,15 +50,16 @@ jobs:
         }
 
 
-    - name: 3. Start Tunnel
+
+    - name: 3. Start Tunnel Stable
       shell: cmd
       run: |
 
-        echo =====================
-        echo CONNECT WITH RD APP
-        echo =====================
+        echo ==========================
+        echo COPY ADDRESS BELOW
+        echo ==========================
 
         :loop
-        ssh -o StrictHostKeyChecking=no -R 0:localhost:3389 tcp@a.pinggy.io
+        ssh -T -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -p 443 -R0:localhost:3389 tcp@a.pinggy.io
         timeout /t 5
         goto loop
