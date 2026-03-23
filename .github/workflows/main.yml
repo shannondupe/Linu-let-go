@@ -1,4 +1,4 @@
-name: MAX RDP TAILSCALE OPENGL
+name: MAX RDP TAILSCALE OPENGL FIX
 
 on:
   workflow_dispatch:
@@ -24,11 +24,11 @@ jobs:
       run: |
         choco install tailscale -y
 
-    - name: Start Tailscale
+    - name: Start Tailscale (fixed path)
       run: |
-        tailscale up --authkey tskey-auth-ktMWauDQ3C11CNTRL-ptdTQ92Xh8Z9dpKLggXh7ZoaLVsy8Ui8V --hostname githubrdp
+        & "C:\Program Files\Tailscale\tailscale.exe" up --authkey tskey-auth-ktMWauDQ3C11CNTRL-ptdTQ92Xh8Z9dpKLggXh7ZoaLVsy8Ui8V --hostname githubrdp
 
-    - name: Enable DirectX WARP GPU
+    - name: Enable DirectX WARP
       run: |
         reg add "HKLM\SOFTWARE\Microsoft\Direct3D" /v UseWARP /t REG_DWORD /d 1 /f
 
