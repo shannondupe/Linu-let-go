@@ -1,4 +1,4 @@
-name: MAX RDP OPENGL DX
+name: MAX RDP TAILSCALE OPENGL
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ jobs:
 
     steps:
 
-    - name: Create Admin User
+    - name: Create user
       run: |
         net user gamer Passw0rd! /add
         net localgroup administrators gamer /add
@@ -20,26 +20,30 @@ jobs:
         reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-    - name: Enable WARP DirectX GPU
+    - name: Install Tailscale
+      run: |
+        choco install tailscale -y
+
+    - name: Start Tailscale
+      run: |
+        tailscale up --authkey tskey-auth-ktMWauDQ3C11CNTRL-ptdTQ92Xh8Z9dpKLggXh7ZoaLVsy8Ui8V --hostname githubrdp
+
+    - name: Enable DirectX WARP GPU
       run: |
         reg add "HKLM\SOFTWARE\Microsoft\Direct3D" /v UseWARP /t REG_DWORD /d 1 /f
 
-    - name: Install OpenGL + DirectX + VC++
+    - name: Install OpenGL / DX / VC++
       run: |
         choco install mesa -y
-        choco install directx -y
         choco install vcredist-all -y
+        choco install directx -y
         choco install dotnetfx -y
 
-    - name: Disable sleep / power save
+    - name: Disable sleep
       run: |
         powercfg -change -standby-timeout-ac 0
         powercfg -change -monitor-timeout-ac 0
 
-    - name: Show IP
-      run: |
-        ipconfig
-
-    - name: Keep Alive
+    - name: Keep alive
       run: |
         while ($true) { Start-Sleep 60 }
