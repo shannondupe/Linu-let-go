@@ -1,65 +1,45 @@
-name: Toontown RDP Fix (Phone Optimized)
+name: MAX RDP OPENGL DX
 
 on:
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: windows-latest
+  rdp:
+    runs-on: windows-2022
+    timeout-minutes: 360
 
     steps:
 
-    - name: 1. Download Mesa3D
-      shell: powershell
+    - name: Create Admin User
       run: |
+        net user gamer Passw0rd! /add
+        net localgroup administrators gamer /add
 
-        Write-Host "Downloading Mesa"
-
-        curl.exe -L -o mesa.7z https://github.com/pal1000/mesa-dist-win/releases/download/23.1.9/mesa3d-23.1.9-release-msvc.7z
-
-        mkdir C:\mesa -ErrorAction SilentlyContinue
-
-        & "C:\Program Files\7-Zip\7z.exe" x mesa.7z -oC:\mesa -y
-
-        [System.Environment]::SetEnvironmentVariable("GALLIUM_DRIVER","llvmpipe","Machine")
-
-        echo C:\mesa\x64 >> $env:GITHUB_PATH
-
-
-
-    - name: 2. Enable RDP Safe
-      shell: powershell
+    - name: Enable RDP
       run: |
-
-        Write-Host "Enable RDP"
-
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' `
-          -Name "fDenyTSConnections" -Value 0
-
-        Set-ItemProperty -Path `
-        'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' `
-        -Name "UserAuthentication" -Value 0
-
+        reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-        $user = Get-LocalUser -Name "runneradmin" -ErrorAction SilentlyContinue
-
-        if (!$user) {
-          net user runneradmin Pass123! /add
-          net localgroup administrators runneradmin /add
-        }
-
-
-
-    - name: 3. Start Tunnel Stable
-      shell: cmd
+    - name: Enable WARP DirectX GPU
       run: |
+        reg add "HKLM\SOFTWARE\Microsoft\Direct3D" /v UseWARP /t REG_DWORD /d 1 /f
 
-        echo ==========================
-        echo COPY ADDRESS BELOW
-        echo ==========================
+    - name: Install OpenGL + DirectX + VC++
+      run: |
+        choco install mesa -y
+        choco install directx -y
+        choco install vcredist-all -y
+        choco install dotnetfx -y
 
-        :loop
-        ssh -T -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -p 443 -R0:localhost:3389 tcp@a.pinggy.io
-        timeout /t 5
-        goto loop
+    - name: Disable sleep / power save
+      run: |
+        powercfg -change -standby-timeout-ac 0
+        powercfg -change -monitor-timeout-ac 0
+
+    - name: Show IP
+      run: |
+        ipconfig
+
+    - name: Keep Alive
+      run: |
+        while ($true) { Start-Sleep 60 }
